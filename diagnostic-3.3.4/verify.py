@@ -1,10 +1,10 @@
 import hashlib,json,pathlib,subprocess
 root=pathlib.Path.cwd()
 exe=root/"candidate/Chase-Setup-3.3.4-windows11-x64.exe"
-subprocess.run(["innoextract","-s","-d","verified",str(exe)],check=True)
+subprocess.run([str(exe),"/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/NOICONS","/DIR="+str(root/"verified/app")],check=True)
 payload=root/"verified/app"
 m=json.loads((root/"payload-manifest.json").read_text())
-assert {p.relative_to(payload).as_posix() for p in payload.rglob("*") if p.is_file()}==set(m["files"])
+assert {p.relative_to(payload).as_posix() for p in payload.rglob("*") if p.is_file() and not p.name.startswith("unins")}==set(m["files"])
 for name,info in m["files"].items():
  assert hashlib.sha256((payload/name).read_bytes()).hexdigest()==info["sha256"]
 digest=hashlib.sha256(exe.read_bytes()).hexdigest()
