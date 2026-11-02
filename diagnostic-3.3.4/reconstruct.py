@@ -7,7 +7,7 @@ archive=root/"delta.zip"; archive.write_bytes(blob)
 installer=root/"baseline.exe"
 urllib.request.urlretrieve("https://github.com/alastair5924/chase-updates/releases/download/v3.3.2/Chase-Setup-3.3.2-windows-x64.exe",installer)
 assert hashlib.sha256(installer.read_bytes()).hexdigest()=="ddccb8c4458cda990dc8fe0451ef74c8fba625440093c981055f082468245b27"
-subprocess.run(["innoextract","-s","-d","baseline",str(installer)],check=True)
+subprocess.run([str(installer),"/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/NOICONS","/DIR="+str(root/"baseline/app")],check=True)
 payload=root/"baseline/app"
 with zipfile.ZipFile(archive) as z:
  m=json.loads(z.read("manifest.json"))
@@ -23,7 +23,7 @@ with zipfile.ZipFile(archive) as z:
   p=payload/name;assert p.resolve().is_relative_to(payload.resolve());p.unlink()
  for name,info in m["files"].items():
   p=payload/name;assert hashlib.sha256(p.read_bytes()).hexdigest()==info["sha256"]
- assert {p.relative_to(payload).as_posix() for p in payload.rglob("*") if p.is_file()}==set(m["files"])
+ assert {p.relative_to(payload).as_posix() for p in payload.rglob("*") if p.is_file() and not p.name.startswith("unins")}==set(m["files"])
  assert not any(p.suffix.lower() in {".dpapi",".sqlite3",".gpx",".fit"} for p in payload.rglob("*"))
  (root/"payload-manifest.json").write_text(json.dumps(m))
  with zipfile.ZipFile(root/"payload.zip","w",zipfile.ZIP_DEFLATED) as packed:
