@@ -1,57 +1,13 @@
-name: Publish approved Windows 11 diagnostic
+# Retired 3 November 2026: locally supported builds and packaging must run on the owner's PC.
+# The published diagnostic release and its verification records remain available.
+name: Retired Windows 11 diagnostic packaging
 on:
-  push:
-    branches: ['auto/windows11-diagnostic-3.3.4']
-    paths: ['.github/workflows/windows11-diagnostic.yml']
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  verify-and-publish:
-    runs-on: windows-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
+  retired:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: python -m pip install bsdiff4==1.2.6
-      - name: Reconstruct and verify the locally built application
-        run: python diagnostic-3.3.4/reconstruct.py
-      - name: Install the exact local packaging compiler
-        shell: pwsh
-        run: |
-          Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe' -OutFile inno.exe
-          if ((Get-FileHash inno.exe -Algorithm SHA256).Hash.ToLower() -ne '9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732') { throw 'Compiler hash mismatch' }
-          $compilerRoot = Join-Path $env:RUNNER_TEMP 'pinned-inno'
-          $process = Start-Process -FilePath "$PWD/inno.exe" -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$compilerRoot") -Wait -PassThru -WindowStyle Hidden
-          if ($process.ExitCode -ne 0) { throw 'Compiler setup failed' }
-          "PINNED_ISCC=$compilerRoot/ISCC.exe" >> $env:GITHUB_ENV
-      - name: Package the unchanged locally built application files
-        shell: pwsh
-        run: |
-          Expand-Archive payload.zip -DestinationPath payload
-          New-Item -ItemType Directory candidate | Out-Null
-          & $env:PINNED_ISCC /Q /DAppVersion=3.3.4 "/DPayloadDir=$PWD/payload" "/DOutputDir=$PWD/candidate" diagnostic-3.3.4/chase.iss
-          if ($LASTEXITCODE -ne 0) { throw 'Installer compile failed' }
-      - name: Verify native installation and every packaged application file
-        run: python diagnostic-3.3.4/verify.py
-      - name: Publish only the approved diagnostic prerelease
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          before=$(gh api repos/alastair5924/chase-updates/releases/latest --jq .tag_name)
-          gh release create v3.3.4-win11-diagnostic \
-            --repo alastair5924/chase-updates --target "$GITHUB_SHA" \
-            --title "Chase 3.3.4 Windows 11 diagnostic" \
-            --notes-file diagnostic-3.3.4/RELEASE-NOTES.md \
-            --draft --prerelease --latest=false \
-            candidate/Chase-Setup-3.3.4-windows11-x64.exe \
-            candidate/SHA256SUMS.txt candidate/release-verification.json
-          gh release edit v3.3.4-win11-diagnostic --repo alastair5924/chase-updates --draft=false --prerelease --latest=false
-          after=$(gh api repos/alastair5924/chase-updates/releases/latest --jq .tag_name)
-          test "$before" = "$after"
-          echo "Published diagnostic prerelease; stable release remains $after"
+      - run: echo "Retired. Build, package and verify locally; upload prebuilt artifacts."
