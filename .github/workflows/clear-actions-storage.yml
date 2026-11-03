@@ -1,54 +1,12 @@
-name: One-time Actions storage cleanup
+# One-time storage cleanup completed 3 November 2026. Archived artifacts are on the owner's PC.
+name: Completed Actions storage cleanup
 on:
-  push:
-    branches: ['auto/clear-actions-storage-20261103']
-    paths: ['.github/workflows/clear-actions-storage.yml']
+  workflow_dispatch:
 permissions:
   contents: read
-  actions: write
 jobs:
-  cleanup:
+  completed:
+    if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
-      - name: Delete only locally archived artifacts and rebuildable caches
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import json,os,urllib.request,urllib.error
-          base="https://api.github.com/repos/"+os.environ["GITHUB_REPOSITORY"]+"/actions/"
-          headers={"Authorization":"Bearer "+os.environ["GH_TOKEN"],"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}
-          def api(path,method="GET"):
-           assert path.startswith(("artifacts","caches"))
-           try:
-            with urllib.request.urlopen(urllib.request.Request(base+path,headers=headers,method=method),timeout=30) as response:
-             body=response.read()
-             return json.loads(body) if body else None
-           except urllib.error.HTTPError as error:
-            if error.code==404:return None
-            raise RuntimeError("Actions storage request failed with status "+str(error.code)) from None
-          approved=[]
-          deleted=[]
-          for item in approved:
-           current=api("artifacts/"+str(item["id"]))
-           if current is None:continue
-           assert current["digest"]==item["digest"] and current["size_in_bytes"]==item["size"],"Remote artifact differs from locally verified copy"
-           api("artifacts/"+str(item["id"]),"DELETE")
-           deleted.append(item["id"])
-          cache_deleted=[]
-          while True:
-           inventory=api("caches?per_page=100")
-           if not inventory or not inventory.get("actions_caches"):break
-           for cache in inventory["actions_caches"]:
-            api("caches/"+str(cache["id"]),"DELETE")
-            cache_deleted.append({"id":cache["id"],"bytes":cache["size_in_bytes"]})
-          remaining=api("artifacts?per_page=100") or {}
-          caches=api("caches?per_page=100") or {}
-          report={"repository":os.environ["GITHUB_REPOSITORY"],"deleted_archived_artifacts":deleted,"deleted_caches":cache_deleted,"remaining_artifacts":remaining.get("total_count",0),"remaining_caches":caches.get("total_count",0),"published_releases_changed":False,"builds_started":0}
-          print("LOCAL_STORAGE_CLEANUP_REPORT "+json.dumps(report))
-          assert report["remaining_artifacts"]==0,"Unarchived artifacts remain; preserve locally before deleting"
-          assert report["remaining_caches"]==0,"Caches remain"
-          
-          PY
+      - run: echo "Completed. No scheduled cleanup, builds, caches or artifact uploads."
